@@ -8,6 +8,11 @@ import mimetypes
 import pathlib
 
 
+BASE_DIR = pathlib.Path(__file__).parent
+TEMPLATES_DIR = BASE_DIR / "templates"
+env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+
+
 def format_date(data: str):
     time = datetime.fromisoformat(data)
     return time.strftime("%b %d, %Y %H:%M:%S")
@@ -74,7 +79,7 @@ class HttpHandler(BaseHTTPRequestHandler):
         elif pr_url.path == "/message":
             self.send_html_file("message.html")
         elif pr_url.path == "/read":
-            env = Environment(loader=FileSystemLoader("."))
+            env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
             template = env.get_template("read.html")
             messages = self.__storage.read_messages()
             rendered = template.render(messages=messages, format_date=format_date)
@@ -103,11 +108,17 @@ class HttpHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def send_html_file(self, filename, status=200):
+        file_path = TEMPLATES_DIR / filename
+        if not file_path.exists():
+            self.send_error(404, "File not found")
+            return
+
         self.send_response(status)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        with open(filename, "rb") as fd:
-            self.wfile.write(fd.read())
+
+        with open(file_path, "rb") as file:
+            self.wfile.write(file.read())
 
     def send_static(self):
         self.send_response(200)
